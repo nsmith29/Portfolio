@@ -1,0 +1,127 @@
+
+
+# March 2023
+
+# Adapted version of template.inp from CP2K website:
+# https://manual.cp2k.org/trunk/methods/dft/cutoff.html
+
+ &GLOBAL
+   PRINT_LEVEL  MEDIUM
+   PROJECT_NAME LT_name
+   RUN_TYPE  ENERGY
+ &END GLOBAL
+ &MOTION
+   &GEO_OPT
+     OPTIMIZER  BFGS
+     MAX_DR    3.0E-04
+     MAX_FORCE 4.5E-05
+     RMS_DR    1.5E-04
+     RMS_FORCE 3.0E-05
+   &END GEO_OPT
+   &CELL_OPT
+     OPTIMIZER  BFGS
+     STEP_START_VAL  6
+     TYPE  DIRECT_CELL_OPT
+     KEEP_ANGLES  T
+   &END CELL_OPT
+ &END MOTION
+ &FORCE_EVAL
+   METHOD  QS
+   STRESS_TENSOR  ANALYTICAL
+   &DFT
+     BASIS_SET_FILE_NAME ./BASIS_MOLOPT
+     POTENTIAL_FILE_NAME ./GTH_POTENTIALS
+     BASIS_SET_FILE_NAME ./BASIS_ADMM_UZH
+     UKS  T
+     CHARGE 0
+     &SCF
+       &OUTER_SCF
+         EPS_SCF 1.0E-07
+         MAX_SCF 35
+       &END OUTER_SCF
+       MAX_SCF  35
+       EPS_SCF     1.0E-07
+       SCF_GUESS  ATOMIC
+       &OT
+         MINIMIZER DIIS
+         PRECONDITIONER FULL_ALL
+         ENERGY_GAP 2.46
+       &END OT
+       &MIXING  T
+         METHOD  BROYDEN_MIXING
+         ALPHA     2.0000000000000001E-01
+         BETA     1.5000000000000000E+00
+         NBUFFER  8
+       &END MIXING
+     &END SCF
+     &QS
+       EPS_DEFAULT     1.0000000000000000E-10
+       EPS_FILTER_MATRIX 1.0E-32
+       EPS_PGF_ORB 1.0E-16
+     &END QS
+     &MGRID
+       NGRIDS  4
+       CUTOFF     LT_cutoff
+       REL_CUTOFF    LT_rel_cutoff
+     &END MGRID
+     &XC
+      &XC_FUNCTIONAL
+        &PBE
+          SCALE_X 0.73
+          SCALE_C 1.0
+        &END PBE
+        &PBE_HOLE_T_C_LR
+          CUTOFF_RADIUS 2.0
+          SCALE_X 0.27
+        &END PBE_HOLE_T_C_LR
+      &END XC_FUNCTIONAL
+      &HF
+        FRACTION 0.27
+        &SCREENING
+          EPS_SCHWARZ 1.0E-6
+          SCREEN_ON_INITIAL_P TRUE
+        &END SCREENING
+        &INTERACTION_POTENTIAL
+          POTENTIAL_TYPE TRUNCATED
+          CUTOFF_RADIUS 2.0
+          T_C_G_DATA ./t_c_g.dat
+        &END INTERACTION_POTENTIAL
+        &MEMORY
+          MAX_MEMORY 4000
+          EPS_STORAGE_SCALING 0.1
+        &END MEMORY
+      &END HF
+     &END XC
+     &AUXILIARY_DENSITY_MATRIX_METHOD
+       METHOD BASIS_PROJECTION
+       ADMM_PURIFICATION_METHOD NONE
+     &END AUXILIARY_DENSITY_MATRIX_METHOD
+     &POISSON
+       PERIODIC  XYZ
+     &END POISSON
+   &END DFT
+   &SUBSYS
+     &CELL
+       A     LT_a
+       B     LT_b
+       C     LT_c
+       PERIODIC  XYZ
+       MULTIPLE_UNIT_CELL  1 1 1
+     &END CELL
+     &KIND LT_X
+       BASIS_SET DZVP-MOLOPT-SR-GTH
+       POTENTIAL GTH-PBE-LT_Q
+       BASIS_SET AUX_FIT admm-dzp-LT_Q
+     &END KIND
+     &TOPOLOGY
+       COORD_FILE_FORMAT XYZ
+       COORD_FILE_NAME  LT_geoxyz/KT_geoxyz
+       NUMBER_OF_ATOMS  TL_atoms
+       MULTIPLE_UNIT_CELL  1 1 1
+     &END TOPOLOGY
+     &PRINT
+       &ATOMIC_COORDINATES  MEDIUM
+       &END ATOMIC_COORDINATES
+     &END PRINT
+   &END SUBSYS
+ &END FORCE_EVAL
