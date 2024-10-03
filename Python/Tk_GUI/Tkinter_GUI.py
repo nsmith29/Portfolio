@@ -211,55 +211,6 @@ class Frames:
         self._eB = tk_frame
 
 
-#     @property
-#     def left_frame_aA(self):
-#         return self._left_aA
-
-#     @left_frame_aA.setter
-#     def left_frame_aA(self, tk_frame):
-#         self._left_aA = tk_frame
-
-#     @property
-#     def right_frame_aA(self):
-#         return self._right_aA
-
-#     @right_frame_aA.setter
-#     def right_frame_aA(self, tk_frame):
-#         self._right_aA = tk_frame
-
-#     @property
-#     def left_frame_bA(self):
-#         return self._left_bA
-
-#     @left_frame_bA.setter
-#     def left_frame_bA(self, tk_frame):
-#         self._left_bA = tk_frame
-
-#     @property
-#     def right_frame_bA(self):
-#         return self._right_bA
-
-#     @right_frame_bA.setter
-#     def right_frame_bA(self, tk_frame):
-#         self._right_bA = tk_frame
-
-#     @property
-#     def left_frame_cA(self):
-#         return self._left_cA
-
-#     @left_frame_cA.setter
-#     def left_frame_cA(self, tk_frame):
-#         self._left_cA = tk_frame
-
-#     @property
-#     def right_frame_cA(self):
-#         return self._right_cA
-
-#     @right_frame_cA.setter
-#     def right_frame_cA(self, tk_frame):
-#         self._right_cA = tk_frame
-
-
 class HandlingPictures:
     def __init__(self):
         self._blank, self._A, self._B = None, None, None
@@ -324,6 +275,7 @@ class DoublePageWidgets:
         self._left_L, self._left_H, self._right_L, self._right_H = None, None, None, None
         self._left_LUMO, self._left_HOMO, self._right_LUMO, self._right_HOMO = None, None, None, None
         self._left_slider, self._right_slider = None, None
+        self._cur_l_canvs, self._cur_r_canvs = [], []
 
     @property
     def left_frame(self):
@@ -517,6 +469,30 @@ class DoublePageWidgets:
     def right_HOMO(self, tk_frame):
         self._right_HOMO = tk_frame
 
+    @property
+    def left_slider(self):
+        return self._left_slider
+
+    @left_slider.setter
+    def left_slider(self, tk_scale):
+        self._left_slider = tk_scale
+
+    @property
+    def right_slider(self):
+        return self._right_slider
+
+    @right_slider.setter
+    def right_slider(self, tk_scale):
+        self._right_slider = tk_scale
+
+    @property
+    def cur_l_canvas(self):
+        return self._cur_l_canvs
+
+    @property
+    def cur_r_canvas(self):
+        return self._cur_r_canvs
+
 
 class DoublePageNotebooks:
     def __init__(self):
@@ -541,6 +517,10 @@ class Notebook_Handler:
         for let in 'a', 'b', 'c', 'd', 'e':
             frame = eval("Frames().frame_{}{}".format(let, self.letter))
             self.notebook.add(frame, text=let)
+        if self.letter == 'A':
+            # populate double notebook pages with widgets.
+            for i in 'a', 'b', 'c':
+                Double_Notebook_page(i)
 
 
 class NotebookTab:
@@ -557,32 +537,42 @@ class NotebookTab:
 
 class SliderPictureUpdater:
     def __init__(self, fr, slider):
-        self.ntbk = A_notebook if str(dropdown.get()).find('A') != -1 else B_notebook
-        self.name = "A_notebook" if str(dropdown.get()).find('A') != -1 else "B_notebook"
-        self.tab, self.slider, self.isovalue = NotebookTab(self.ntbk).get_tab_name(), slider, 0
+        self.notebook_name = A_notebook if str(dropdown.get()).find('A') != -1 else B_notebook
+
+        self.tab, self.isovalue = NotebookTab(self.notebook_name).get_tab_name(), 0
+
+        self.dct = DoublePageNotebooks().dictionary[self.tab]
+        self.slider = self.dct[str("_{}_slider".format(slider))]
+
         self.H_fr, self.L_fr = None, None
 
-        self.H_fr = [eval(f.format(self.tab)) for f in fr if f.find('H') != -1][0] if type(fr) == list else \
-            [eval(fr.format(self.tab)) if fr.find('H') != -1 else self.H_fr][0]
-        self.L_fr = [eval(f.format(self.tab)) for f in fr if f.find('L') != -1][0] if type(fr) == list else \
-            [eval(fr.format(self.tab)) if fr.find('L') != -1 else self.L_fr][0]
+        self.H_fr = [self.dct[str(f)] for f in fr if f.find('H') != -1][0] if type(fr) == list else \
+            [self.dct[str(fr)] if fr.find('H') != -1 else self.H_fr][0]
 
-        if type(fr) == list:
-            [eval(frame_.format(self.tab)).grid_forget() for frame_ in fr]
+        self.L_fr = [self.dct[str(f)] for f in fr if f.find('L') != -1][0] if type(fr) == list else \
+            [self.dct[str(fr)] if fr.find('L') != -1 else self.L_fr][0]
+
+    def set_slider(self, value=None):
+        if value:
+            self.slider.set(value)
         else:
-            eval(fr.format(self.tab)).grid_forget()
-
-    def set_slider(self):
-        self.slider.set(0.01)
+            self.slider.set(0.01)
 
     def get_isovalue(self):
-        self.isovalue = float(eval(self.slider.format(self.tab)).get())
+        self.isovalue = float(self.slider.get())
+
+    def forget_canvas(self, fr):
+        if self.dct[str("_cur_{}_canvs".format(fr))] != []:
+            for canvas in self.dct[str("_cur_{}_canvs".format(fr))]:
+                canvas.get_tk_widget().grid_remove()
+
+            self.dct[str("_cur_{}_canvs".format(fr))] = []
 
     def plotter(self, file):
-        figure = plt.Figure(figsize=(4.3, 3.6), dpi=100)
+        figure = plt.Figure(figsize=(4.51, 2.78), dpi=100)
         ax = figure.add_subplot(111)
         img_wfn = mpimg.imread(file)
-        ax.imshow(img_wfn, aspect='equal', interpolation='nearest')
+        ax.imshow(img_wfn, interpolation='nearest')  # , aspect='equal'
         ax.axis('off')
         figure.tight_layout()
 
@@ -597,32 +587,35 @@ class SliderPictureUpdater:
 
 class old_isovalues(SliderPictureUpdater):
     def __init__(self, event):
-        super().__init__(["H_figure_frameold{}A", "L_figure_frameold{}A"], "slider_old{}A")
+        super().__init__(["_left_H", "_left_L"], "left")
         super().get_isovalue()
-        self.H_fr.grid(column=0, row=3, columnspan=14, rowspan=17)
-        self.L_fr.grid(column=16, row=3, columnspan=14, rowspan=17)
-        H_file = str(f"./A_notebook/{self.name}/{self.tab}/old/Hold{self.isovalue}.jpg")
-        L_file = str(f"./A_notebook/{self.name}/{self.tab}/old/Lold{self.isovalue}.jpg")
+        super().forget_canvas('l')
+
+        H_file = str(f"./A_notebook/{self.tab}/old/Hold{self.isovalue}.jpg")
+        L_file = str(f"./A_notebook/{self.tab}/old/Lold{self.isovalue}.jpg")
         for W in 'H', 'L':
             fig = super().plotter(eval("{}_file".format(W)))
             exec(f'{W}_fig_old{self.tab}A = fig')
             canvas = super().canvas(eval("{}_fig_old{}A".format(W, self.tab)), eval("self.{}_fr".format(W)))
-            exec(f'{W}_fig_canvas_old{self.tab}A = canvas')
+            self.dct['_cur_l_canvs'].append(canvas)
+        self.set_slider(self.isovalue)
 
 
 class new_isovalues(SliderPictureUpdater):
     def __init__(self, event):
-        super().__init__(["H_figure_framenew{}A", "L_figure_framenew{}A"], "slider_new{}A")
+        super().__init__(["_right_H", "_right_L"], "right")
         super().get_isovalue()
-        self.H_fr.grid(column=0, row=3, columnspan=14, rowspan=17)
-        self.L_fr.grid(column=16, row=3, columnspan=14, rowspan=17)
-        H_file = str(f"./A_notebook/{self.name}/{self.tab}/new/Hnew{self.isovalue}.jpg")
-        L_file = str(f"./A_notebook/{self.name}/{self.tab}/new/Lnew{self.isovalue}.jpg")
+        super().forget_canvas('r')
+
+        H_file = str(f"./A_notebook/{self.tab}/new/Hnew{self.isovalue}.jpg")
+        L_file = str(f"./A_notebook/{self.tab}/new/Lnew{self.isovalue}.jpg")
         for W in 'H', 'L':
+            name = str(f"{W}_{self.isovalue}")
+
             fig = super().plotter(eval("{}_file".format(W)))
             exec(f'{W}_fig_new{self.tab}A = fig')
             canvas = super().canvas(eval("{}_fig_new{}A".format(W, self.tab)), eval("self.{}_fr".format(W)))
-            exec(f'{W}_fig_canvas_new{self.tab}A = canvas')
+            self.dct['_cur_r_canvs'].append(canvas)
 
 
 class Tables:
@@ -643,11 +636,15 @@ class Double_Notebook_page:
         self.setup_right_left_frames()
         self.make_widget_frames()
         self.position_widgets()
+        self.populate_table()
+        self.populate_extended()
 
         if DoublePageNotebooks().dictionary == {}:
             DoublePageNotebooks.dictionary = {self.lett: self.props.__dict__}
         else:
             DoublePageNotebooks().dictionary[self.lett] = self.props.__dict__
+
+        self.setup_first_pictures()
 
     def setup_right_left_frames(self):
         for side, col in zip(['left', 'right'], [3, 52]):
@@ -657,38 +654,52 @@ class Double_Notebook_page:
             exec(f'self.props.{side}_canvas.grid(columnspan=43, rowspan=57)')
 
     def make_widget_frames(self):
-        for side, txt, age in zip(["left", "right"], ["older version 1", "newer version 2"], ['old', 'new']):
+        for side, txt in zip(["left", "right"], ["older version 1", "newer version 2"]):
             exec(f'self.props.{side}_text =  tk.Label(self.props.{side}_frame, text=txt)')
             exec(f'self.props.{side}_table_frame = ttk.Frame(self.props.{side}_frame)')
-            exec(f'self.props.{side}_p_fig = ttk.Frame(self.props.{side}_frame, width=290, height=280)')
-            exec(f'self.props.{side}_d_fig = ttk.Frame(self.props.{side}_frame, width=290, height=280)')
-            exec(f'self.props.{side}_extended = ttk.Frame(self.props.{side}_frame, width=600, height=230)')
-            exec(
-                f'self.props.{side}_slider = tk.Scale(self.props.{side}_frame, from_=0.01, to=0.09, digits=3, resolution=0.005, orient=tk.VERTICAL, length=230, command={age}_isovalues)')
+            exec(f'self.props.{side}_p_fig = ttk.Frame(self.props.{side}_frame, width=270, height=240)')
+            exec(f'self.props.{side}_d_fig = ttk.Frame(self.props.{side}_frame, width=270, height=240)')
+            exec(f'self.props.{side}_extended = ttk.Frame(self.props.{side}_frame, width=675, height=230)')
 
     def position_widgets(self):
         for side in 'left', 'right':
             exec(f'self.props.{side}_text.grid(column=2, row=0, rowspan=2)')
-            exec(f'self.props.{side}_table_frame.grid(column=3, row=4, rowspan=5, columnspan=29)')
-            exec(f'self.props.{side}_p_fig.grid(column=0, row=11, columnspan=15, rowspan=25)')
-            exec(f'self.props.{side}_d_fig.grid(column = 19, row = 11, columnspan = 15, rowspan = 25)')
-            exec(f'self.props.{side}_extended.grid(column = 0, row = 38, columnspan = 25, rowspan = 22)')
-            exec(f'self.props.{side}_slider.grid(column=35, row=38, columnspan=10, rowspan=22)')
+            exec(f'self.props.{side}_table_frame.grid(column=8, row=0, rowspan=3, columnspan=29)')
+            exec(f'self.props.{side}_p_fig.grid(column=2, row=4, columnspan=14, rowspan=16)')
+            exec(f'self.props.{side}_d_fig.grid(column=19, row=4, columnspan=20, rowspan=16)')
+            exec(f'self.props.{side}_extended.grid(column = 0, row = 38, columnspan=45, rowspan = 22)')
 
     def populate_table(self):
-        for side in 'left', 'right':
+        for side, age in zip(['left', 'right'], ['old', 'new']):
             lst = [('', "Energy(eV)", "HOMO(eV)", "LUMO(eV)", "Bandgap(eV)"),
-                   (f"{i}A defect {age}", " ", " ", " ", " ")]
+                   (f"{self.lett}A defect {age}", " ", " ", " ", " ")]
             WDTs = [12, 10, 8, 8, 12]
             exec(f'self.props.{side}_table = Tables(self.props.{side}_table_frame, WDTs, lst)')
 
     def populate_extended(self):
-        for side in 'left', 'right':
-            for let, word in zip(['H', 'L'], ['HOMO', 'LUMO']):
-                exec(f'self.props.{side}_{let} = ttk.Frame(self.props.{side}_extended, width=330, height=200)')
-                exec(f'self.props.{side}_{let}.grid(column = 0, row = 3, columnspan = 14, rowspan = 17)')
+        for side, age in zip(['left', 'right'], ['old', 'new']):
+            exec(
+                f'self.props.{side}_slider = tk.Scale(self.props.{side}_frame, from_=0.01, to=0.09, digits=2, resolution=0.005, orient=tk.VERTICAL, length=200, command={age}_isovalues)')
+            exec(f'self.props.{side}_slider.grid(column=35, row=40, columnspan=9, rowspan=20)')
+            for let, word, col1, col2 in zip(['H', 'L'], ['HOMO', 'LUMO'], [0, 15], [1, 16]):
+                exec(f'self.props.{side}_{let} = ttk.Frame(self.props.{side}_extended, width=325, height=200)')
+                exec(f'self.props.{side}_{let}.grid(column = col1, row = 3, columnspan=12, rowspan = 17)')
+
                 exec(f'self.props.{side}_{word} = tk.Label(self.props.{side}_extended, text=word)')
-                exec(f'self.props.{side}_{word}.grid(column=2, columnspan = 4, row = 0, rowspan = 2)')
+                exec(f'self.props.{side}_{word}.grid(column=col2, columnspan = 2, row = 0, rowspan = 2)')
+
+    def setup_first_pictures(self):
+        for side, let, age in zip(['left', 'right'], ['l', 'r'], ['old', 'new']):
+            setup = SliderPictureUpdater([f"_{side}_H", f"_{side}_L"], side)
+            H_file = str(f"./A_notebook/{self.lett}/{age}/H{age}0.01.jpg")
+            L_file = str(f"./A_notebook/{self.lett}/{age}/L{age}0.01.jpg")
+            for W in 'H', 'L':
+                fig = setup.plotter(eval("{}_file".format(W)))
+                exec(f'{W}_fig_old{self.lett}A = fig')
+                canvas = setup.canvas(eval("{}_fig_old{}A".format(W, self.lett)),
+                                      eval("self.props.{}_{}".format(side, W)))
+                DoublePageNotebooks().dictionary[self.lett][f"_cur_{let}_canvs"].append(canvas)
+            setup.set_slider()
 
 
 ## functions
@@ -725,10 +736,11 @@ def heading_pictures(current, replace=None, new=None):
 
 
 def dropdown_menu_command(event):
-    opt = 'A' if str(dropdown.get()).find('A') != -1 else 'B'
+    opt = ['A' if str(dropdown.get()).find('A') != -1 else 'B'][0] if str(dropdown.get()) != '--' else 'blank'
     if DropdownMenuStatus().blank_shown is True:
         DropdownMenuStatus.blank_shown = False
         heading_pictures('blank', 'yes', opt)
+        to_start.grid_remove()
 
     elif DropdownMenuStatus().A_notebook is True:
         DropdownMenuStatus.A_notebook = False
@@ -753,8 +765,12 @@ def dropdown_menu_command(event):
         if DropdownMenuStatus().label is True:
             DropdownMenuStatus.label = False
             C_label.grid_remove()
-        Notebook_Handler(eval("{}_notebook".format(opt)), opt).add_frames()
-        exec(f'DropdownMenuStatus.{opt}_notebook = True')
+        if str(dropdown.get()) == '--':
+            to_start.grid(column=9, row=5, columnspan=19)
+            DropdownMenuStatus.blank_shown = True
+        else:
+            Notebook_Handler(eval("{}_notebook".format(opt)), opt).add_frames()
+            exec(f'DropdownMenuStatus.{opt}_notebook = True')
     DropdownMenuStatus.previous_tab_type = opt
 
 
@@ -774,6 +790,11 @@ def comparison_button_pressed():
     listbox.pack(expand=True, fill=BOTH)
 
 
+def _quit():
+    root.quit()
+    root.destroy()
+
+
 if __name__ == '__main__':
     root = tk.Tk()
     root.minsize(1515, 850)
@@ -782,7 +803,7 @@ if __name__ == '__main__':
     canvas = tk.Canvas(root, width=1500, height=850)
     canvas.grid(columnspan=83, rowspan=47)
 
-    button_quit = tk.Button(root, text="quit")
+    button_quit = tk.Button(root, text="quit", command=_quit)
     button_quit.grid(column=1, row=0, rowspan=2)
 
     # Header
@@ -794,6 +815,9 @@ if __name__ == '__main__':
     t_A = Tables(A_frame, WDTs, lst)
 
     setheaderpictures()
+
+    to_start = tk.Label(root, text="<- To start, select an option from the dropdown menu")
+    to_start.grid(column=9, row=5, columnspan=19)
 
     for pic in 'blank', 'A', 'B':
         exec(f'Frames.{pic}_pic_frame = tk.Frame(root)')
@@ -815,7 +839,7 @@ if __name__ == '__main__':
     t_corrections = Tables(corrections_frame, WDTs, lst)
 
     # dropdown menu
-    options = ["A1", "A2", "B1", "B2"]
+    options = ["--", "A1", "A2", "B1", "B2"]
     dropdown = ttk.Combobox(root, values=options)
     dropdown.current(0)
     dropdown.bind("<<ComboboxSelected>>", dropdown_menu_command)
@@ -841,7 +865,3 @@ if __name__ == '__main__':
             exec(f'Frames().frame_{i}{l}.grid(sticky="nsew")')
             exec(f'canvas{i}{l} = tk.Canvas(Frames().frame_{i}{l}, width=1450, height=570)')
             exec(f'canvas{i}{l}.grid(columnspan=100, rowspan=60)')
-
-    # populate double notebook pages with widgets.
-    for i in 'a', 'b', 'c':
-        Double_Notebook_page(i)
