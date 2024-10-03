@@ -23,7 +23,7 @@
 #                                   ipr values of the VB and CB, the ipr value of the defect state, and the
 #                                   defect state's Fermi level above the single electron KS HOMO energy.
 #---------------------------------------------------
-# Author: Niamh Smith [orignal: Jack Strand] e-mail: niamh.smith.17 [at] ucl.ac.uk
+# Author: Niamh Smith [original: Jack Strand] e-mail: niamh.smith.17 [at] ucl.ac.uk
 # Date:   22-09-2023; 30-01-2024 [updated]
 #---------------------------------------------------
 

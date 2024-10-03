@@ -7,15 +7,13 @@ import tkinter as tk
 from tkinter import *
 from tkinter.ttk import *
 from tkinter import ttk
-from ipywidgets import interactive, FloatSlider
-import ipywidgets as widgets
+
 from PIL import ImageTk, Image
 import matplotlib
 
 matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 from matplotlib.figure import Figure
-import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import matplotlib.ticker as mticker
 import matplotlib.gridspec as gridspec
@@ -519,7 +517,7 @@ class Notebook_Handler:
             self.notebook.add(frame, text=let)
         if self.letter == 'A':
             # populate double notebook pages with widgets.
-            for i in 'a', 'b', 'c':
+            for i in 'a', 'b':
                 Double_Notebook_page(i)
 
 
@@ -533,6 +531,32 @@ class NotebookTab:
             if self.tab_num == indx:
                 tab_name = name
         return tab_name
+
+
+class Figures:
+    def __init__(self, frame):
+        self.frame = frame
+        self.fig = Figure(figsize=(5.31, 3.58), dpi=75)
+        self.ax = self.fig.add_subplot(111)
+
+    def _add_data_(self, x_data, y_data, linestyle='-', colour='k', label_=None):
+        self.ax.plot(x_data, y_data, ls=linestyle, color=colour, label=label_)
+
+    def _all_data_plotted_(self, x_axis, y_axis):
+        handles, labels = self.ax.get_legend_handles_labels()
+        self.ax.legend(handles, labels)
+
+        self.ax.set(xlabel=x_axis[0], ylabel=y_axis[0])
+        self.ax.set_xlim(x_axis[1], x_axis[2])
+        self.ax.set_ylim(y_axis[1], y_axis[2])
+
+        self.fig.tight_layout()
+
+    def canvas(self):
+        canvas = FigureCanvasTkAgg(self.fig, master=self.frame)
+        canvas.get_tk_widget().grid(sticky="nsew")
+
+        return canvas
 
 
 class SliderPictureUpdater:
@@ -569,7 +593,7 @@ class SliderPictureUpdater:
             self.dct[str("_cur_{}_canvs".format(fr))] = []
 
     def plotter(self, file):
-        figure = plt.Figure(figsize=(4.51, 2.78), dpi=100)
+        figure = Figure(figsize=(4.51, 2.78), dpi=100)
         ax = figure.add_subplot(111)
         img_wfn = mpimg.imread(file)
         ax.imshow(img_wfn, interpolation='nearest')  # , aspect='equal'
@@ -681,15 +705,17 @@ class Double_Notebook_page:
             exec(
                 f'self.props.{side}_slider = tk.Scale(self.props.{side}_frame, from_=0.01, to=0.09, digits=2, resolution=0.005, orient=tk.VERTICAL, length=200, command={age}_isovalues)')
             exec(f'self.props.{side}_slider.grid(column=35, row=40, columnspan=9, rowspan=20)')
-            for let, word, col1, col2 in zip(['H', 'L'], ['HOMO', 'LUMO'], [0, 15], [1, 16]):
+            for let, word, word1, col1, col2 in zip(['H', 'L'], ['HOMO', 'LUMO'],
+                                                    ['HOMO wavefunction:', 'LUMO wavefunction:'], [0, 15], [1, 16]):
                 exec(f'self.props.{side}_{let} = ttk.Frame(self.props.{side}_extended, width=325, height=200)')
                 exec(f'self.props.{side}_{let}.grid(column = col1, row = 3, columnspan=12, rowspan = 17)')
 
-                exec(f'self.props.{side}_{word} = tk.Label(self.props.{side}_extended, text=word)')
-                exec(f'self.props.{side}_{word}.grid(column=col2, columnspan = 2, row = 0, rowspan = 2)')
+                exec(f'self.props.{side}_{word} = tk.Label(self.props.{side}_extended, text=word1)')
+                exec(f'self.props.{side}_{word}.grid(column=col2, columnspan = 5, row = 0, rowspan = 2)')
 
     def setup_first_pictures(self):
         for side, let, age in zip(['left', 'right'], ['l', 'r'], ['old', 'new']):
+            # Wavefunction plots
             setup = SliderPictureUpdater([f"_{side}_H", f"_{side}_L"], side)
             H_file = str(f"./A_notebook/{self.lett}/{age}/H{age}0.01.jpg")
             L_file = str(f"./A_notebook/{self.lett}/{age}/L{age}0.01.jpg")
@@ -700,6 +726,15 @@ class Double_Notebook_page:
                                       eval("self.props.{}_{}".format(side, W)))
                 DoublePageNotebooks().dictionary[self.lett][f"_cur_{let}_canvs"].append(canvas)
             setup.set_slider()
+
+            # p_figure plots
+            exec(f'p_{side}_figure = Figures(self.props.{side}_p_fig)')
+            for i, c_ in zip([1, 2, 3], ['c', 'g', 'orange']):
+                path = str(f"./A_notebook/{self.lett}/{age}/{age}_{self.lett}{i}.dat")
+                x_data, y_data = np.loadtxt(path, unpack=True)
+                exec(f'p_{side}_figure._add_data_(x_data, y_data, linestyle="--", colour=c_, label_="{self.lett}{i}")')
+            exec(f'p_{side}_figure._all_data_plotted_(["energy", -2, 5], ["DOS", 0, 200])')
+            exec(f'canvas2 = p_{side}_figure.canvas()')
 
 
 ## functions
@@ -758,7 +793,7 @@ def dropdown_menu_command(event):
         B_notebook.grid_remove()
 
     if str(dropdown.get()).find('2') != -1:
-        C_label.grid(column=15, columnspan=10, row=7, rowspan=2)
+        C_label.grid(column=5, columnspan=25, row=7, rowspan=2)
         DropdownMenuStatus.label = True
         exec(f'DropdownMenuStatus.{opt}_notebook = True')
     else:
@@ -810,8 +845,8 @@ if __name__ == '__main__':
     A_frame = tk.Frame(root)
     A_frame.grid(column=1, row=2, columnspan=20, rowspan=3)
     lst = [('', "Energy(eV)", "HOMO(eV)", "LUMO(eV)", "Bandgap(eV)"),
-           ("Bulk perfect", " ", " ", " ", " ")]
-    WDTs = [12, 10, 8, 8, 12]
+           ("Bulk structure info", " ", " ", " ", " ")]
+    WDTs = [15, 10, 8, 8, 12]
     t_A = Tables(A_frame, WDTs, lst)
 
     setheaderpictures()
@@ -828,7 +863,7 @@ if __name__ == '__main__':
 
     corrections_label = tk.Label(root, text="Here are your corrections:")
     corrections_frame = tk.Frame(root)
-    corrections_label.grid(column=73, row=0, columnspan=10)
+    corrections_label.grid(column=70, row=0, columnspan=8)
     corrections_frame.grid(column=70, row=1, columnspan=25, rowspan=6)
     lst = [("Charge", "Point Charge \eV", "Lany-Zunger \eV", "Results  V_M^{scr}"),
            ("1", " ", " ", " "),
